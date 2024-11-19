@@ -41,9 +41,9 @@ For more information, refer to the [Datastore Migration documentation](/spicedb/
 </Callout>
 
 - Recommended for multi-region deployments, with configurable region awareness
-- Enables horizonally scalablity by adding more SpiceDB and CockroachDB instances
+- Enables horizontally scalability by adding more SpiceDB and CockroachDB instances
 - Resiliency to individual CockroachDB instance failures
-- Query and data balanced across the CockroachDB
+- Query and data balanced across the CockroachDB cluster
 - Setup and operational complexity of running CockroachDB
 
 ### Developer Notes
@@ -64,34 +64,41 @@ For more information, refer to the [Datastore Migration documentation](/spicedb/
 #### Required Parameters
 
 | Parameter            | Description                               | Example                                                                                   |
-| -------------------- | ----------------------------------------- | ----------------------------------------------------------------------------------------- |
-| `datastore-engine`   | the datastore engine                      | `--datastore-engine=cockroachdb`                                                          |
-| `datastore-conn-uri` | connection string used to connect to CRDB | `--datastore-conn-uri="postgres://user:password@localhost:26257/spicedb?sslmode=disable"` |
+|----------------------|-------------------------------------------|-------------------------------------------------------------------------------------------|
+| `datastore-engine`   | The datastore engine                      | `--datastore-engine=cockroachdb`                                                          |
+| `datastore-conn-uri` | Connection string used to connect to CRDB | `--datastore-conn-uri="postgres://user:password@localhost:26257/spicedb?sslmode=disable"` |
 
 #### Optional Parameters
 
-| Parameter                                | Description                                                                           | Example                                         |
-| ---------------------------------------- | ------------------------------------------------------------------------------------- | ----------------------------------------------- |
-| `datastore-max-tx-retries`               | Maximum number of times to retry a query before raising an error                      | `--datastore-max-tx-retries=50`                 |
-| `datastore-tx-overlap-strategy`          | The overlap strategy to prevent New Enemy on CRDB (see below)                         | `--datastore-tx-overlap-strategy=static`        |
-| `datastore-tx-overlap-key`               | The key to use for the overlap strategy (see below)                                   | `--datastore-tx-overlap-key="foo"`              |
-| `datastore-conn-max-idletime`            | Maximum idle time for a connection before it is recycled                              | `--datastore-conn-max-idletime=60s`             |
-| `datastore-conn-max-lifetime`            | Maximum lifetime for a connection before it is recycled                               | `--datastore-conn-max-lifetime=300s`            |
-| `datastore-conn-max-open`                | Maximum number of concurrent connections to open                                      | `--datastore-conn-max-open=10`                  |
-| `datastore-conn-min-open`                | Minimum number of concurrent connections to open                                      | `--datastore-conn-min-open=1`                   |
-| `datastore-query-split-size`             | The (estimated) query size at which to split a query into multiple queries            | `--datastore-query-split-size=5kb`              |
-| `datastore-gc-window`                    | Sets the window outside of which overwritten relationships are no longer accessible   | `--datastore-gc-window=1s`                      |
-| `datastore-revision-fuzzing-duration`    | Sets a fuzzing window on all zookies/zedtokens                                        | `--datastore-revision-fuzzing-duration=50ms`    |
-| `datastore-readonly`                     | Places the datastore into readonly mode                                               | `--datastore-readonly=true`                     |
-| `datastore-follower-read-delay-duration` | Amount of time to subtract from non-sync revision timestamps to ensure follower reads | `--datastore-follower-read-delay-duration=4.8s` |
-| `datastore-relationship-integrity-enabled` | Enables relationship integrity checks, only supported on CRDB | `--datastore-relationship-integrity-enabled=false` |
-| `datastore-relationship-integrity-current-key-id` | Current key id for relationship integrity checks | `--datastore-relationship-integrity-current-key-id="foo"` |
-| `datastore-relationship-integrity-current-key-filename` | Current key filename for relationship integrity checks | `--datastore-relationship-integrity-current-key-filename="foo"` |
-| `datastore-relationship-integrity-expired-keys` | Config for expired keys for relationship integrity checks | `--datastore-relationship-integrity-expired-keys="foo"` |
+| Parameter                                            | Description                                                                                                                                                 | Example                                                                                                                                       |
+|------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------|
+| `datastore-max-tx-retries`                           | Number of times a retriable transaction should be retried                                                                                                   | `--datastore-max-tx-retries=10`                                                                                                               |
+| `datastore-tx-overlap-strategy`                      | Strategy to generate transaction overlap keys (`"request"`, `"prefix"`, `"static"`, `"insecure"`) (CockroachDB only)                                        | `--datastore-tx-overlap-strategy=static`                                                                                                      |
+| `datastore-tx-overlap-key`                           | Static key to touch when writing to ensure transactions overlap (used if `--datastore-tx-overlap-strategy=static`; CockroachDB only)                         | `--datastore-tx-overlap-key="key"`                                                                                                            |
+| `datastore-conn-pool-read-max-open`                  | Number of concurrent connections open in the read connection pool                                                                                           | `--datastore-conn-pool-read-max-open=20`                                                                                                      |
+| `datastore-conn-pool-read-min-open`                  | Minimum number of concurrent connections open in the read connection pool                                                                                   | `--datastore-conn-pool-read-min-open=20`                                                                                                      |
+| `datastore-conn-pool-read-max-lifetime`              | Maximum lifetime of a connection in the read connection pool                                                                                                | `--datastore-conn-pool-read-max-lifetime=30m`                                                                                                 |
+| `datastore-conn-pool-read-max-lifetime-jitter`       | Waits a random duration after a connection is open for max lifetime to actually close the connection (default: 20% of max lifetime)                         | `--datastore-conn-pool-read-max-lifetime-jitter=6m`                                                                                           |
+| `datastore-conn-pool-read-max-idletime`              | Maximum idle time of a connection in the read connection pool                                                                                               | `--datastore-conn-pool-read-max-idletime=30m`                                                                                                 |
+| `datastore-conn-pool-read-healthcheck-interval`      | Time between connection health checks in the read connection pool                                                                                           | `--datastore-conn-pool-read-healthcheck-interval=30s`                                                                                         |
+| `datastore-conn-pool-write-max-open`                 | Number of concurrent connections open in the write connection pool                                                                                          | `--datastore-conn-pool-write-max-open=10`                                                                                                     |
+| `datastore-conn-pool-write-min-open`                 | Minimum number of concurrent connections open in the write connection pool                                                                                  | `--datastore-conn-pool-write-min-open=10`                                                                                                     |
+| `datastore-conn-pool-write-max-lifetime`             | Maximum lifetime of a connection in the write connection pool                                                                                               | `--datastore-conn-pool-write-max-lifetime=30m`                                                                                                |
+| `datastore-conn-pool-write-max-lifetime-jitter`      | Waits a random duration after a connection is open for max lifetime to actually close the connection (default: 20% of max lifetime)                         | `--datastore-conn-pool-write-max-lifetime-jitter=6m`                                                                                          |
+| `datastore-conn-pool-write-max-idletime`             | Maximum idle time of a connection in the write connection pool                                                                                              | `--datastore-conn-pool-write-max-idletime=30m`                                                                                                |
+| `datastore-conn-pool-write-healthcheck-interval`     | Time between connection health checks in the write connection pool                                                                                          | `--datastore-conn-pool-write-healthcheck-interval=30s`                                                                                        |
+| `datastore-follower-read-delay-duration`             | Amount of time to subtract from non-sync revision timestamps to ensure they are sufficiently in the past to enable follower reads (CockroachDB only)        | `--datastore-follower-read-delay-duration=4.8s`                                                                                               |
+| `datastore-relationship-integrity-enabled`           | Enables relationship integrity checks (only supported on CockroachDB)                                                                                       | `--datastore-relationship-integrity-enabled=true`                                                                                             |
+| `datastore-relationship-integrity-current-key-id`    | Current key ID for relationship integrity checks                                                                                                            | `--datastore-relationship-integrity-current-key-id="key-id"`                                                                                  |
+| `datastore-relationship-integrity-current-key-filename` | Current key filename for relationship integrity checks                                                                                                  | `--datastore-relationship-integrity-current-key-filename="key-file.pem"`                                                                      |
+| `datastore-relationship-integrity-expired-keys`      | Configuration for expired keys for relationship integrity checks                                                                                            | `--datastore-relationship-integrity-expired-keys='{"key_id":"old-key-id","key_filename":"old-key.pem","expired_at":"2023-01-01T00:00:00Z"}'` |
+| `datastore-connection-balancing`                     | Enable connection balancing between database nodes (CockroachDB only)                                                                                       | `--datastore-connection-balancing=true`                                                                                                      |
+| `datastore-connect-rate`                             | Rate at which new connections are allowed to the datastore (CockroachDB only)                                                                               | `--datastore-connect-rate=100ms`                                                                                                             |
+| `datastore-watch-connect-timeout`                    | Duration the watch connection should wait before timing out (CockroachDB only)                                                                              | `--datastore-watch-connect-timeout=1s`                                                                                                       |
 
 #### Overlap Strategy
 
-In distributed systems, you can trade-off consistency for performance.
+In distributed systems, you can trade off consistency for performance.
 
 CockroachDB datastore users that are willing to rely on more subtle guarantees to mitigate the [New Enemy Problem] can configure `--datastore-tx-overlap-strategy`.
 
@@ -99,17 +106,18 @@ CockroachDB datastore users that are willing to rely on more subtle guarantees t
 
 The available strategies are:
 
-| Strategy | Description |
-| --- | --- |
-| `static` (default) | All writes overlap to guarantee safety at the cost of write throughput |
-| `prefix` | Only writes that contain objects with same prefix overlap (e.g. `tenant1/user` and `tenant2/user` can be written in concurrently) |
-| `request` | Only writes with the same `io.spicedb.requestoverlapkey` header overlap enabling applications to decide on-the-fly which writes have causual dependencies. Writes without any header act the same as `insecure`. |
-| `insecure` | No writes overlap, providing the best write throughput, but possibly leaving you vulnerable to the [New Enemy Problem] |
+| Strategy   | Description                                                                                                                                                                   |
+|------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `static`   | All writes overlap to guarantee safety at the cost of write throughput                                                                                                        |
+| `prefix`   | Only writes that contain objects with the same prefix overlap (e.g., `tenant1/user` and `tenant2/user` can be written concurrently)                                           |
+| `request`  | Only writes with the same `io.spicedb.requestoverlapkey` header overlap, enabling applications to decide on-the-fly which writes have causal dependencies. Others act as `insecure`. |
+| `insecure` | No writes overlap, providing the best write throughput, but possibly leaving you vulnerable to the [New Enemy Problem]                                                        |
 
 For more information, refer to the [CockroachDB datastore README][crdb-readme] or our blog post "[The One Crucial Difference Between Spanner and CockroachDB][crdb-blog]".
 
 [crdb-readme]: https://github.com/authzed/spicedb/blob/main/internal/datastore/crdb/README.md
 [crdb-blog]: https://authzed.com/blog/prevent-newenemy-cockroachdb
+
 
 #### Garbage Collection Window
 
@@ -160,19 +168,20 @@ Deployment Process
 2. Run the standard `migrate` command but with relationship integrity flags included.
 3. Run SpiceDB with the relationship integrity flags included.
 
+
 ## Cloud Spanner
 
 ### Usage Notes
 
 - Requires a Google Cloud Account with an active Cloud Spanner instance
-- Take advantage of Google's TrueTime.
+- Takes advantage of Google's TrueTime.
   The Spanner driver assumes the database is linearizable and skips the transaction overlap strategy required by CockroachDB.
 
 ### Developer Notes
 
 - Code can be found [here][spanner-code]
 - Documentation can be found [here][spanner-godoc]
-- Starts a background [GC worker][gc-process] to clean up old entries from the manually-generated changelog table
+- Starts a background [GC worker][gc-process] to clean up old entries from the manually generated changelog table
 
 [spanner-code]: https://github.com/authzed/spicedb/tree/main/internal/datastore/spanner
 [spanner-godoc]: https://pkg.go.dev/github.com/authzed/spicedb/internal/datastore/spanner
@@ -180,28 +189,23 @@ Deployment Process
 
 ### Configuration
 
-- The [Cloud Spanner docs][spanner-docs] outline how to set up an instance
-- Authentication via service accounts: The service account that runs migrations must have `Cloud Spanner Database Admin`; SpiceDB (non-migrations) must have `Cloud Spanner Database User`.
-
-[spanner-docs]: https://cloud.google.com/spanner
-
 #### Required Parameters
 
 | Parameter            | Description                           | Example                                                                                  |
-| -------------------- | ------------------------------------- | ---------------------------------------------------------------------------------------- |
-| `datastore-engine`   | the datastore engine                  | `--datastore-engine=spanner`                                                             |
-| `datastore-conn-uri` | the cloud spanner database identifier | `--datastore-conn-uri="projects/project-id/instances/instance-id/databases/database-id"` |
+|----------------------|---------------------------------------|------------------------------------------------------------------------------------------|
+| `datastore-engine`   | The datastore engine                  | `--datastore-engine=spanner`                                                             |
+| `datastore-conn-uri` | The Cloud Spanner database identifier | `--datastore-conn-uri="projects/project-id/instances/instance-id/databases/database-id"` |
 
 #### Optional Parameters
 
-| Parameter                                | Description                                                                                                                         | Example                                          |
-| ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
-| `datastore-spanner-credentials`          | JSON service account token (omit to use [application default credentials](https://cloud.google.com/docs/authentication/production)) | `--datastore-spanner-credentials=./spanner.json` |
-| `datastore-gc-interval`                  | Amount of time to wait between garbage collection passes                                                                            | `--datastore-gc-interval=3m`                     |
-| `datastore-gc-window`                    | Sets the window outside of which overwritten relationships are no longer accessible                                                 | `--datastore-gc-window=1s`                       |
-| `datastore-revision-fuzzing-duration`    | Sets a fuzzing window on all zookies/zedtokens                                                                                      | `--datastore-revision-fuzzing-duration=50ms`     |
-| `datastore-readonly`                     | Places the datastore into readonly mode                                                                                             | `--datastore-readonly=true`                      |
-| `datastore-follower-read-delay-duration` | Amount of time to subtract from non-sync revision timestamps to ensure stale reads                                                  | `--datastore-follower-read-delay-duration=4.8s`  |
+| Parameter                                            | Description                                                                                                                                       | Example                                                      |
+|------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------|
+| `datastore-spanner-credentials`                      | Path to service account key credentials file with access to the Cloud Spanner instance (omit to use application default credentials)              | `--datastore-spanner-credentials=./spanner.json`             |
+| `datastore-spanner-emulator-host`                    | URI of Spanner emulator instance used for development and testing (e.g., `localhost:9010`)                                                        | `--datastore-spanner-emulator-host=localhost:9010`           |
+| `datastore-spanner-min-sessions`                     | Minimum number of sessions across all Spanner gRPC connections the client can have at a given time                                                | `--datastore-spanner-min-sessions=100`                       |
+| `datastore-spanner-max-sessions`                     | Maximum number of sessions across all Spanner gRPC connections the client can have at a given time                                                | `--datastore-spanner-max-sessions=400`                       |
+| `datastore-watch-buffer-length`                      | Size of the watch buffer before blocking                                                                                                          | `--datastore-watch-buffer-length=1024`                       |
+| `datastore-watch-buffer-write-timeout`               | Duration the watch buffer should queue before forcefully disconnecting the reader                                                                 | `--datastore-watch-buffer-write-timeout=1s`                  |
 
 ## PostgreSQL
 
@@ -280,35 +284,30 @@ If this occurs, you can use `spicedb datastore repair` (along with your usual da
 spicedb datastore repair --datastore-engine=postgres --datastore-conn-uri=$DATASTORE_URI
 ```
 
-### Configuration
-
 #### Required Parameters
 
 | Parameter            | Description                                     | Example                                                                                      |
-| -------------------- | ----------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| `datastore-engine`   | the datastore engine                            | `--datastore-engine=postgres`                                                                |
-| `datastore-conn-uri` | connection string used to connect to PostgreSQL | `--datastore-conn-uri="postgres://postgres:password@localhost:5432/spicedb?sslmode=disable"` |
+|----------------------|-------------------------------------------------|----------------------------------------------------------------------------------------------|
+| `datastore-engine`   | The datastore engine                            | `--datastore-engine=postgres`                                                                |
+| `datastore-conn-uri` | Connection string used to connect to PostgreSQL | `--datastore-conn-uri="postgres://postgres:password@localhost:5432/spicedb?sslmode=disable"` |
 
 #### Optional Parameters
 
-| Parameter                             | Description                                                                         | Example                                      |
-| ------------------------------------- | ----------------------------------------------------------------------------------- | -------------------------------------------- |
-| `datastore-conn-max-idletime`         | Maximum idle time for a connection before it is recycled                            | `--datastore-conn-max-idletime=60s`          |
-| `datastore-conn-max-lifetime`         | Maximum lifetime for a connection before it is recycled                             | `--datastore-conn-max-lifetime=300s`         |
-| `datastore-conn-max-open`             | Maximum number of concurrent connections to open                                    | `--datastore-conn-max-open=10`               |
-| `datastore-conn-min-open`             | Minimum number of concurrent connections to open                                    | `--datastore-conn-min-open=1`                |
-| `datastore-query-split-size`          | The (estimated) query size at which to split a query into multiple queries          | `--datastore-query-split-size=5kb`           |
-| `datastore-gc-window`                 | Sets the window outside of which overwritten relationships are no longer accessible | `--datastore-gc-window=1s`                   |
-| `datastore-revision-fuzzing-duration` | Sets a fuzzing window on all zookies/zedtokens                                      | `--datastore-revision-fuzzing-duration=50ms` |
-| `datastore-readonly`                  | Places the datastore into readonly mode                                             | `--datastore-readonly=true`                  |
-| `datastore-read-replica-conn-uri`     | Connection string used by datastores for read replicas; only supported for postgres and MySQL | `--datastore-read-replica-conn-uri="postgres://postgres:password@localhost:5432/spicedb\"` |
-| `—datastore-read-replica-credentials-provider-name`               | Retrieve datastore credentials dynamically using aws-iam                      |                 |
-| --datastore-read-replica-conn-pool-read-healthcheck-interval      | amount of time between connection health checks in a read-only replica datastore's connection pool | `--datastore-read-replica-conn-pool-read-healthcheck-interval=30s` |
-| --datastore-read-replica-conn-pool-read-max-idletime              | maximum amount of time a connection can idle in a read-only replica datastore's connection pool | `--datastore-read-replica-conn-pool-read-max-idletime=30m` |
-| --datastore-read-replica-conn-pool-read-max-lifetime              | maximum amount of time a connection can live in a read-only replica datastore's connection pool | `--datastore-read-replica-conn-pool-read-max-lifetime=30m` |
-| --datastore-read-replica-conn-pool-read-max-lifetime-jitter       | waits rand(0, jitter) after a connection is open for max lifetime to actually close the connection to a read replica(default: 20% of max lifetime) | `--datastore-read-replica-conn-pool-read-max-lifetime-jitter=6m` |
-| --datastore-read-replica-conn-pool-read-max-open                  | number of concurrent connections open in a read-only replica datastore's connection pool | `--datastore-read-replica-conn-pool-read-max-open=20` |
-| --datastore-read-replica-conn-pool-read-min-open                  | number of minimum concurrent connections open in a read-only replica datastore's connection pool | `--datastore-read-replica-conn-pool-read-min-open=20` |
+| Parameter                                | Description                                                                                                   | Example                                                               |
+|------------------------------------------|---------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------|
+| `datastore-conn-max-open`                | Maximum number of concurrent connections to open                                                              | `--datastore-conn-max-open=50`                                        |
+| `datastore-conn-min-open`                | Minimum number of concurrent connections to maintain                                                          | `--datastore-conn-min-open=10`                                        |
+| `datastore-conn-max-lifetime`            | Maximum lifetime for a connection before it is recycled                                                       | `--datastore-conn-max-lifetime=30m`                                   |
+| `datastore-conn-max-idletime`            | Maximum idle time for a connection before it is recycled                                                      | `--datastore-conn-max-idletime=10m`                                   |
+| `datastore-gc-window`                    | Sets the window outside of which overwritten relationships are no longer accessible                           | `--datastore-gc-window=24h`                                           |
+| `datastore-revision-quantization-interval` | Boundary interval to which to round the quantized revision                                                    | `--datastore-revision-quantization-interval=5s`                       |
+| `datastore-revision-quantization-max-staleness-percent` | Percentage of the quantization interval to allow for stale revisions for performance                      | `--datastore-revision-quantization-max-staleness-percent=0.1`         |
+| `datastore-read-replica-conn-uri`        | Connection string used by read replicas; supports up to 16 URIs                                                | `--datastore-read-replica-conn-uri="postgres://replica:password@host"`|
+| `datastore-read-replica-credentials-provider-name` | Retrieve credentials dynamically using providers such as AWS IAM                                           | `--datastore-read-replica-credentials-provider-name="aws-iam"`        |
+| `datastore-read-replica-conn-pool-read-max-open` | Maximum number of connections in the read replica connection pool                                              | `--datastore-read-replica-conn-pool-read-max-open=20`                 |
+| `datastore-read-replica-conn-pool-read-min-open` | Minimum number of connections in the read replica connection pool                                              | `--datastore-read-replica-conn-pool-read-min-open=5`                  |
+| `datastore-read-replica-conn-pool-read-max-lifetime` | Maximum lifetime of connections in the read replica connection pool                                           | `--datastore-read-replica-conn-pool-read-max-lifetime=30m`            |
+| `datastore-read-replica-conn-pool-read-healthcheck-interval` | Frequency of health checks for connections in the read replica pool                                           | `--datastore-read-replica-conn-pool-read-healthcheck-interval=1m`     |
 
 ## MySQL
 
@@ -433,3 +432,33 @@ Read replicas are configured with the `--datastore-read-replica-*` family of fla
 | `datastore-revision-fuzzing-duration` | Sets a fuzzing window on all zookies/zedtokens                                      | `--datastore-revision-fuzzing-duration=50ms` |
 | `datastore-gc-window`                 | Sets the window outside of which overwritten relationships are no longer accessible | `--datastore-gc-window=1s`                   |
 | `datastore-readonly`                  | Places the datastore into readonly mode                                             | `--datastore-readonly=true`                  |
+
+## Common Configuration Flags
+
+These flags apply to all datastore engines:
+
+### Required Parameters
+
+| Parameter            | Description                                     | Example                                                                                      |
+|----------------------|-------------------------------------------------|----------------------------------------------------------------------------------------------|
+| `datastore-engine`   | The datastore engine                            | `--datastore-engine=postgres`                                                                |
+| `datastore-conn-uri` | Connection string used to connect to the datastore | `--datastore-conn-uri="postgres://user:password@localhost:5432/spicedb?sslmode=disable"`     |
+
+### Optional Parameters
+
+| Parameter                                         | Description                                                                                                               | Example                                                      |
+|---------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------|
+| `datastore-gc-window`                             | Amount of time before revisions are garbage collected                                                                     | `--datastore-gc-window=24h`                                  |
+| `datastore-revision-quantization-interval`        | Boundary interval to which to round the quantized revision                                                                | `--datastore-revision-quantization-interval=5s`              |
+| `datastore-revision-quantization-max-staleness-percent` | Percentage of the quantization interval to allow for stale revisions for performance                                  | `--datastore-revision-quantization-max-staleness-percent=0.1`|
+| `datastore-readonly`                              | Set the service to read-only mode                                                                                         | `--datastore-readonly=true`                                  |
+| `datastore-bootstrap-files`                       | Bootstrap data YAML files to load                                                                                         | `--datastore-bootstrap-files="schema.yaml,data.yaml"`        |
+| `datastore-bootstrap-overwrite`                   | Overwrite any existing data with bootstrap data (can be slow)                                                             | `--datastore-bootstrap-overwrite=true`                       |
+| `datastore-bootstrap-timeout`                     | Maximum duration before timeout for the bootstrap data to be written                                                      | `--datastore-bootstrap-timeout=10s`                          |
+| `datastore-request-hedging`                       | Enable request hedging                                                                                                    | `--datastore-request-hedging=true`                           |
+| `datastore-request-hedging-initial-slow-value`    | Initial value to use for slow datastore requests before statistics are collected                                          | `--datastore-request-hedging-initial-slow-value=20ms`        |
+| `datastore-request-hedging-max-requests`          | Maximum number of historical requests to consider                                                                         | `--datastore-request-hedging-max-requests=1000000`           |
+| `datastore-request-hedging-quantile`              | Quantile of historical request times over which a request is considered slow                                              | `--datastore-request-hedging-quantile=0.9`                   |
+| `datastore-prometheus-metrics`                    | Enable or disable Prometheus metrics                                                                                      | `--datastore-prometheus-metrics=true`                        |
+| `datastore-watch-buffer-length`                   | Size of the watch buffer before blocking                                                                                  | `--datastore-watch-buffer-length=1024`                       |
+| `datastore-watch-buffer-write-timeout`            | Duration the watch buffer should queue before forcefully disconnecting the reader                                         | `--datastore-watch-buffer-write-timeout=1s`                  |
